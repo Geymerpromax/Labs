@@ -3,7 +3,7 @@
 
 using System;
 
-namespace Lab1
+namespace Lab3
 {
     class Program
     {
