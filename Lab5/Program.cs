@@ -11,6 +11,7 @@ namespace Lab5
         static void Main()
         {
 
+
         }
     }
 }
