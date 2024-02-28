@@ -9,7 +9,6 @@ c) выбрать заданное число N абитуриентов, име
 
 using System;
 using System.Collections.Generic;
-using System.Linq;
 
 
 namespace Lab4
