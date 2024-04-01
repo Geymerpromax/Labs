@@ -5,7 +5,7 @@
 
 using System;
 using System.Collections.Generic;
-using System.ComponentModel;
+using System.Linq;
 
 
 namespace Lab5
@@ -155,27 +155,60 @@ namespace Lab5
     {
         public static List<Book> Books { get; set; } = new List<Book>();
         public static List<StoredBook> StoredBooks { get; set; } = new List<StoredBook>();
-        public static List<StoredBookUsage> StoredBooksUsage { get; set;} = new List<StoredBookUsage>();
+        public static List<StoredBookUsage> StoredBooksUsage { get; set; } = new List<StoredBookUsage>();
 
         public bool IsAvailableBook(StoredBook storedBook)
         {
             return storedBook.isAvailable;
         }
-        public void ShowAllBook()
+
+        public void ShowAllBooks()
         {
             foreach (Book book in Books)
             {
+                int availableCount = StoredBooks.Count(sb => sb.book == book && sb.isAvailable);
+                Console.WriteLine($"Книга: {book.title}\nКоличество доступных экземпляров: {availableCount}");
                 book.ShowAll();
             }
         }
+
+        public bool AnyAvailableBooks()
+        {
+            return StoredBooks.Any(book => book.isAvailable);
+        }
+
         public void GiveTheStorageBook(StoredBook storedBook, User user)
         {
+            if (!storedBook.isAvailable)
+            {
+                Console.WriteLine("Нет доступных экземпляров книги для выдачи.");
+                return;
+            }
+
             StoredBookUsage storedBookUsage = new StoredBookUsage();
             storedBookUsage.bookInstance = storedBook;
             storedBookUsage.user = user;
             storedBook.isAvailable = false;
             StoredBooksUsage.Add(storedBookUsage);
             Console.WriteLine("Книга выдана, запись сделана");
+        }
+
+        public void AcceptBookBack(StoredBookUsage storedBookUsage)
+        {
+            storedBookUsage.bookInstance.isAvailable = true;
+            storedBookUsage.returnDate = DateTime.Now;
+            Console.WriteLine("Книга принята обратно, запись обновлена");
+        }
+
+        public void ShowBookIssueJournal()
+        {
+            Console.WriteLine("Журнал выдачи книг:");
+            foreach (StoredBookUsage usage in StoredBooksUsage)
+            {
+                Console.WriteLine($"ID: {usage.id}, Книга: {usage.bookInstance.book.title}, " +
+                                  $"Пользователь: {usage.user.surname} {usage.user.name}, " +
+                                  $"Дата выдачи: {usage.issueDate}, Дата возврата: {(usage.returnDate.HasValue ? usage.returnDate.Value.ToString() : "еще не возвращена")}");
+            }
         }
     }
 
@@ -185,22 +218,21 @@ namespace Lab5
         {
             User ruslan = new User("Дергунов", "Руслан", "Альбертович", "2003");
 
-            Author authorOne = new Author("Иванова", "Александра", "Игоревна");              
+            Author authorOne = new Author("Иванова", "Александра", "Игоревна");
             Author authorTwo = new Author("Соколов", "Михаил", "Юрьевич");
             Author authorThree = new Author("Петрова", "Екатерина", "Олеговна");
             Author authorFour = new Author("Михайлов", "Дмитрий", "Иванович");
-            Author authorSex = new Author("Колбышев", "Александр ", "Иванович");
+            Author authorSex = new Author("Колбышев", "Александр", "Иванович");
 
-            List<Author> bookOneAutors = new List<Author> { authorOne, authorSex };
+            List<Author> bookOneAuthors = new List<Author> { authorOne, authorSex };
 
-            Book bookOne = new Book("Тени прошлого", bookOneAutors, "2008");
+            Book bookOne = new Book("Тени прошлого", bookOneAuthors, "2008");
             Book bookTwo = new Book("Звездный лабиринт", authorTwo, "2015");
             Book bookThree = new Book("Поток снов", authorThree, "2012");
             Book bookFour = new Book("Сиреневые холмы", authorFour, "2019");
             Book bookFive = new Book("Перекрестие времени", authorSex, "2006");
 
             ApplicationContext.Books = new List<Book> { bookOne, bookTwo, bookThree, bookFour, bookFive };
-
 
             StoredBook firstStoredBookOne = new StoredBook(1, bookOne, 45, 56, true);
             StoredBook secondStoredBookOne = new StoredBook(2, bookOne, 45, 57, false);
@@ -216,82 +248,86 @@ namespace Lab5
 
             ApplicationContext applicationContext = new ApplicationContext();
 
-
-            /*
-            6.	Реализовать открытые методы:
-            •	Выдать книгу пользователю
-            •	Принять книгу обратно
-            •	Показать список всех экземпляров книг
-            •	Показать журнал выдачи книг
-            */
-
-
-
-            while(true)
+            bool exit = false;
+            while (!exit)
             {
-                Console.WriteLine("Добро пожаловать в электроную библиотеку: 'Фича - не баг'");
-                Console.WriteLine("Главное меню");
+                Console.WriteLine("Меню:");
                 Console.WriteLine("1. Взять книгу");
                 Console.WriteLine("2. Вернуть книгу");
                 Console.WriteLine("3. Показать список всех экземпляров книг");
-                Console.WriteLine("4. exit");
-                Console.WriteLine("5. Показать журнал выдачи книг");
+                Console.WriteLine("4. Показать журнал выдачи книг");
+                Console.WriteLine("5. Выход\n");
 
-                switch (Console.ReadLine())
+                Console.Write("Введите номер действия: ");
+                string choice = Console.ReadLine();
+
+                switch (choice)
                 {
                     case "1":
-                        //storedBookUsage.ShowAllBook();
-                        Console.WriteLine("Доступные экземпляры книг: ");
-                        foreach (StoredBook sb in ApplicationContext.StoredBooks)
+                        if (!applicationContext.AnyAvailableBooks())
                         {
-                            if (applicationContext.IsAvailableBook(sb))
-                            {
-                                Console.WriteLine(sb.id + ". " + sb.book.title);
-                            }
-                        }
-                        Console.WriteLine("Выберите желаемую книгу: ");
-                        
-
-                        while(true)
-                        {
-                            int ide = Convert.ToInt32(Console.ReadLine());
-                            foreach (StoredBook sb in ApplicationContext.StoredBooks)
-                            {
-                                if (ide == sb.id)
-                                {
-                                    if (applicationContext.IsAvailableBook(sb))
-                                    {
-                                        applicationContext.GiveTheStorageBook(sb, ruslan);
-                                        
-                                    }
-                                    else
-                                    {
-                                        Console.WriteLine("Ошибка выбора! Попробуйте ещё раз");
-                                    }
-
-                                }
-                            }
+                            Console.WriteLine("Нет доступных книг для выдачи.\n");
                             break;
                         }
-                        
 
+                        Console.Write("Введите инвентарный номер книги: ");
+                        int inventoryNumber;
+                        if (int.TryParse(Console.ReadLine(), out inventoryNumber))
+                        {
+                            StoredBook selectedBook = ApplicationContext.StoredBooks.Find(book => book.inventoryNumber == inventoryNumber);
+                            if (selectedBook != null)
+                            {
+                                applicationContext.GiveTheStorageBook(selectedBook, ruslan);
+                            }
+                            else
+                            {
+                                Console.WriteLine("Книга с таким инвентарным номером не найдена.\n");
+                            }
+                        }
+                        else
+                        {
+                            Console.WriteLine("Неверный формат инвентарного номера.\n");
+                        }
                         break;
                     case "2":
-
+                        if (!ApplicationContext.StoredBooksUsage.Any(usage => usage.user == ruslan && usage.returnDate == null))
+                        {
+                            Console.WriteLine("У вас нет книг для возврата.");
+                            break;
+                        }
+                        Console.Write("Введите ID записи выдачи книги для возврата: ");
+                        int usageID;
+                        if (int.TryParse(Console.ReadLine(), out usageID))
+                        {
+                            StoredBookUsage selectedUsage = ApplicationContext.StoredBooksUsage.Find(usage => usage.id == usageID);
+                            if (selectedUsage != null)
+                            {
+                                applicationContext.AcceptBookBack(selectedUsage);
+                            }
+                            else
+                            {
+                                Console.WriteLine("Запись с таким ID не найдена.\n");
+                            }
+                        }
+                        else
+                        {
+                            Console.WriteLine("Неверный формат ID.\n");
+                        }
                         break;
                     case "3":
-
+                        applicationContext.ShowAllBooks();
                         break;
                     case "4":
-                        Console.Clear();
+                        applicationContext.ShowBookIssueJournal();
+                        break;
+                    case "5":
+                        exit = true;
+                        break;
+                    default:
+                        Console.WriteLine("Неверный выбор. Пожалуйста, выберите одно из действий из меню.\n");
                         break;
                 }
-
-            }  
-            
-
-
-
+            }
         }
     }
 
