@@ -139,16 +139,13 @@ namespace Lab5
         public int id { get; set; } = 0;
         public StoredBook bookInstance { get; set; }
         public User user { get; set; }
-        public DateTime issueDate { get; set; }
-        public DateTime dueDate { get; set; }
-        public DateTime? returnDate { get; set; }
+        public DateTime issueDate { get; set; } // Дата выдачи
+        public DateTime returnDate { get; set; } // Дата возврата
 
         public StoredBookUsage()
         {
             id = globalID++;
         }
-
-        
     }
 
     public class ApplicationContext
@@ -156,7 +153,17 @@ namespace Lab5
         public static List<Book> Books { get; set; } = new List<Book>();
         public static List<StoredBook> StoredBooks { get; set; } = new List<StoredBook>();
         public static List<StoredBookUsage> StoredBooksUsage { get; set; } = new List<StoredBookUsage>();
-
+        public StoredBook FindBookByInventoryNumber(int inventoryNumber)
+        {
+            foreach (StoredBook book in StoredBooks)
+            {
+                if (book.inventoryNumber == inventoryNumber)
+                {
+                    return book;
+                }
+            }
+            return null;
+        }
         public bool IsAvailableBook(StoredBook storedBook)
         {
             return storedBook.isAvailable;
@@ -166,22 +173,37 @@ namespace Lab5
         {
             foreach (Book book in Books)
             {
-                int availableCount = StoredBooks.Count(sb => sb.book == book && sb.isAvailable);
-                Console.WriteLine($"Книга: {book.title}\nКоличество доступных экземпляров: {availableCount}");
+                int availableCount = 0;
+                foreach (StoredBook sb in StoredBooks)
+                {
+                    if (sb.book == book && sb.isAvailable)
+                    {
+                        availableCount++;
+                    }
+                }
+                Console.WriteLine($"Книга: {book.title}");
+                Console.WriteLine($"Количество доступных экземпляров: {availableCount}");
                 book.ShowAll();
             }
         }
 
         public bool AnyAvailableBooks()
         {
-            return StoredBooks.Any(book => book.isAvailable);
+            foreach (StoredBook book in StoredBooks)
+            {
+                if (book.isAvailable)
+                {
+                    return true;
+                }
+            }
+            return false;
         }
 
-        public void GiveTheStorageBook(StoredBook storedBook, User user)
+        public void GiveStorageBook(StoredBook storedBook, User user)
         {
             if (!storedBook.isAvailable)
             {
-                Console.WriteLine("Нет доступных экземпляров книги для выдачи.");
+                Console.WriteLine("Нет доступных экземпляров книги для выдачи.\n");
                 return;
             }
 
@@ -190,24 +212,41 @@ namespace Lab5
             storedBookUsage.user = user;
             storedBook.isAvailable = false;
             StoredBooksUsage.Add(storedBookUsage);
-            Console.WriteLine("Книга выдана, запись сделана");
+            Console.WriteLine("Книга выдана, запись сделана\n");
         }
 
         public void AcceptBookBack(StoredBookUsage storedBookUsage)
         {
             storedBookUsage.bookInstance.isAvailable = true;
             storedBookUsage.returnDate = DateTime.Now;
-            Console.WriteLine("Книга принята обратно, запись обновлена");
+            Console.WriteLine("Книга принята обратно, запись обновлена\n");
         }
 
         public void ShowBookIssueJournal()
         {
+            if (StoredBooksUsage.Count == 0)
+            {
+                Console.WriteLine("Журнал выдачи книг пуст.");
+                return;
+            }
+
             Console.WriteLine("Журнал выдачи книг:");
+
             foreach (StoredBookUsage usage in StoredBooksUsage)
             {
-                Console.WriteLine($"ID: {usage.id}, Книга: {usage.bookInstance.book.title}, " +
-                                  $"Пользователь: {usage.user.surname} {usage.user.name}, " +
-                                  $"Дата выдачи: {usage.issueDate}, Дата возврата: {(usage.returnDate.HasValue ? usage.returnDate.Value.ToString() : "еще не возвращена")}");
+                Console.WriteLine($"ID: {usage.id}");
+                Console.WriteLine($"Книга: {usage.bookInstance.book.title}");
+                Console.WriteLine($"Пользователь: {usage.user.surname} {usage.user.name} {usage.user.patronymic}");
+                Console.WriteLine($"Дата выдачи: {usage.issueDate}");
+                Console.Write("Дата возврата: ");
+                if (usage.returnDate == null)
+                {
+                    Console.WriteLine("еще не возвращена");
+                }
+                else
+                {
+                    usage.returnDate.ToString();
+                }
             }
         }
     }
@@ -235,7 +274,7 @@ namespace Lab5
             ApplicationContext.Books = new List<Book> { bookOne, bookTwo, bookThree, bookFour, bookFive };
 
             StoredBook firstStoredBookOne = new StoredBook(1, bookOne, 45, 56, true);
-            StoredBook secondStoredBookOne = new StoredBook(2, bookOne, 45, 57, false);
+            StoredBook secondStoredBookOne = new StoredBook(2, bookOne, 45, 57, true);
 
             StoredBook firstStoredbookTwo = new StoredBook(3, bookTwo, 35, 51, true);
             StoredBook firstStoredbookThree = new StoredBook(4, bookThree, 4, 8, true);
@@ -244,23 +283,24 @@ namespace Lab5
 
             ApplicationContext.StoredBooks = new List<StoredBook> { firstStoredBookOne, secondStoredBookOne, firstStoredbookTwo, firstStoredbookThree, firstStoredbookFour, firstStoredbookFive };
 
-            StoredBookUsage storedBookUsage = new StoredBookUsage();
+            //StoredBookUsage storedBookUsage = new StoredBookUsage();
 
             ApplicationContext applicationContext = new ApplicationContext();
 
             bool exit = false;
             while (!exit)
             {
+                Console.WriteLine("/////////////////////////////////////////////////////////");
                 Console.WriteLine("Меню:");
                 Console.WriteLine("1. Взять книгу");
                 Console.WriteLine("2. Вернуть книгу");
-                Console.WriteLine("3. Показать список всех экземпляров книг");
+                Console.WriteLine("3. Показать список доступных книг");
                 Console.WriteLine("4. Показать журнал выдачи книг");
                 Console.WriteLine("5. Выход\n");
 
                 Console.Write("Введите номер действия: ");
                 string choice = Console.ReadLine();
-
+                Console.WriteLine("");
                 switch (choice)
                 {
                     case "1":
@@ -270,14 +310,15 @@ namespace Lab5
                             break;
                         }
 
-                        Console.Write("Введите инвентарный номер книги: ");
+                        Console.Write("Введите номер книги: ");
+
                         int inventoryNumber;
                         if (int.TryParse(Console.ReadLine(), out inventoryNumber))
                         {
-                            StoredBook selectedBook = ApplicationContext.StoredBooks.Find(book => book.inventoryNumber == inventoryNumber);
+                            StoredBook selectedBook = applicationContext.FindBookByInventoryNumber(inventoryNumber);
                             if (selectedBook != null)
                             {
-                                applicationContext.GiveTheStorageBook(selectedBook, ruslan);
+                                applicationContext.GiveStorageBook(selectedBook, ruslan);
                             }
                             else
                             {
